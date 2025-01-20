@@ -4,12 +4,10 @@ import { firebaseConfig } from "./firebaseConfig.js";
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export const addData = async () => {
+export const addData = async (username) => {
   try {
     const docRef = await addDoc(collection(db, "users"), {
-      name: "John Doe",
-      age: 30,
-      email: "johndoe@example.com",
+      username,
     });
     console.log("Документ добавлен с ID:", docRef.id);
   } catch (e) {
