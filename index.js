@@ -4,8 +4,10 @@ import schedule from "node-schedule";
 import { Bot } from "grammy";
 import { fetchData } from "./fetchData.js";
 import { addData } from "./addData.js";
+import { deleteDocument } from "./deleteData.js";
 
 const bot = new Bot(process.env.BOT_KEY);
+
 bot.api.setMyCommands([
   {
     command: "start",
@@ -55,17 +57,13 @@ bot.command("remind_me", async (ctx) => {
 
 bot.on("message:new_chat_members", async (ctx) => {
   const newMembers = ctx.message.new_chat_members;
-
   for (const member of newMembers) {
     if (member.is_bot) {
       continue;
     }
-
     const name = member.first_name || "друг";
     const username = member.username || null;
-
     username && (await addData(username));
-
     await ctx.reply(
       `Приветствую, ${name}! Сдай паспорт и веди себя хорошо! Теперь ты один из нас...`
     );
@@ -76,12 +74,26 @@ bot.on("message:new_chat_members", async (ctx) => {
   }
 });
 
+// DELETE USER FROM DB
+bot.on("chat_member", async (ctx) => {
+  const status = ctx.chatMember.new_chat_member.status;
+  if (status === "left") {
+    const user = ctx.chatMember.from;
+    const docId = (await fetchData()).find(
+      (doc) => doc.username === user.username
+    ).id;
+    docId && (await deleteDocument("users", docId));
+    console.log(`Пользователь ${user.first_name} (${user.id}) покинул чат.`);
+  }
+});
+
 bot.command("start", async (ctx) => {
   await ctx.reply(
     `Привет. Я - бот. Меня зовут Анна Сергеевна. Я буду напоминать об АВ всяким зайкам, которые потерялись во времени. Проверь, находишься ли ты в моей базе данных /remind_me`
   );
 });
 
+// SEND MESSAGE
 const sendMessage = async (chatId, text) => {
   try {
     const sentMessage = await bot.api.sendMessage(chatId, text);
@@ -109,4 +121,11 @@ const scheduleDailyMessages = () => {
 
 scheduleDailyMessages();
 
-bot.start();
+bot.start({
+  allowed_updates: [
+    "chat_member",
+    "message",
+    "edited_message",
+    "callback_query",
+  ],
+});

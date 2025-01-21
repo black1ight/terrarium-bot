@@ -8,7 +8,10 @@ export const fetchData = async () => {
   const querySnapshot = await getDocs(collection(db, "users"));
   const data = [];
   querySnapshot.forEach((doc) => {
-    data.push(doc.data());
+    data.push({
+      id: doc.id,
+      username: doc.data().username,
+    });
   });
   return data;
 };
