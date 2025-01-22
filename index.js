@@ -5,6 +5,7 @@ import { Bot } from "grammy";
 import { fetchData } from "./fetchData.js";
 import { addData } from "./addData.js";
 import { deleteDocument } from "./deleteData.js";
+import { updateData } from "./updateData.js";
 
 const bot = new Bot(process.env.BOT_KEY);
 
@@ -15,11 +16,24 @@ bot.api.setMyCommands([
   },
   {
     command: "remind_me",
-    description: "присоединиться к напоминанию",
+    description: "напоминать",
+  },
+  {
+    command: "not_remind",
+    description: "не напоминать",
+  },
+  {
+    command: "add_id",
+    description: "указать игровой id",
+  },
+  {
+    command: "add_nickname",
+    description: "указать игровой ник",
   },
 ]);
 let chatId = process.env.CHAT_ID;
 // let threadIndex = 47;
+let userState = {};
 
 const usersList = (await fetchData()).map((user) => user.username);
 
@@ -41,8 +55,61 @@ bot.command("remind_me", async (ctx) => {
 
   isExist && (await ctx.reply(`Ты уже добавлен, ${name}!`));
   !isExist && username
-    ? (await ctx.reply(`Принято, ${name}!`)) && (await addData(username))
+    ? (await ctx.reply(
+        `Принято, ${name}! Теперь ты будешь получать напоминания!`
+      )) && (await addData(username))
     : !isExist && (await ctx.reply(`Не вижу твоё имя пользователя, ${name}!`));
+});
+
+bot.command("not_remind", async (ctx) => {
+  const user = ctx.from;
+  const name = user.first_name || "друг";
+  const username = user.username || null;
+  const isExist = await checkUser(username);
+
+  if (isExist) {
+    const docId = (await fetchData()).find(
+      (doc) => doc.username === user.username
+    ).id;
+    docId && (await deleteDocument("users", docId));
+    await ctx.reply(`Ты больше не будешь получать напоминание, ${name}!`);
+  } else {
+    await ctx.reply(`А ты их и не получаешь, ${name}!`);
+  }
+});
+
+bot.command("add_id", async (ctx) => {
+  userState[ctx.from.id] = "add_id";
+  const user = ctx.from;
+  const name = user.first_name || "друг";
+  const username = user.username || null;
+  const isExist = await checkUser(username);
+
+  if (isExist) {
+    await ctx.reply(`Отправь сообщение со своим игровым id!`);
+  } else {
+    await ctx.reply(`Тебя еще нет в базе! Жми /remind_me`);
+    delete userState[user.id];
+  }
+});
+
+bot.on("message", async (ctx) => {
+  const userId = ctx.from.id;
+  const text = ctx.message.text;
+  const docId = (await fetchData()).find(
+    (doc) => doc.username === ctx.from.username
+  ).id;
+
+  if (!userState) return;
+  if (docId && userState && userState[userId] === "add_id") {
+    await updateData(docId, { id: `${text}` });
+    ctx.reply(`id успешно добавлен!`);
+    console.log(`id: ${text} успешно добавлен!`);
+    delete userState[userId];
+  } else {
+    ctx.reply(`Произошла ошибка!`);
+    delete userState[userId];
+  }
 });
 
 // bot.command("getthreadid", async (ctx) => {
@@ -65,7 +132,7 @@ bot.on("message:new_chat_members", async (ctx) => {
     const username = member.username || null;
     username && (await addData(username));
     await ctx.reply(
-      `Приветствую, ${name}! Сдай паспорт и веди себя хорошо! Теперь ты один из нас...`
+      `Приветствую, ${name}!Ты будешь получать напоминание об альянсовой войне за 15 минут до её начала. Отказаться: /not_remind`
     );
     !username &&
       (await ctx.reply(
@@ -74,7 +141,7 @@ bot.on("message:new_chat_members", async (ctx) => {
   }
 });
 
-// DELETE USER FROM DB
+// LEFT USER
 bot.on("chat_member", async (ctx) => {
   const status = ctx.chatMember.new_chat_member.status;
   if (status === "left") {
