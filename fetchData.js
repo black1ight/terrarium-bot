@@ -9,8 +9,8 @@ export const fetchData = async () => {
   const data = [];
   querySnapshot.forEach((doc) => {
     data.push({
-      id: doc.id,
-      username: doc.data().username,
+      docId: doc.id,
+      ...doc.data(),
     });
   });
   return data;
