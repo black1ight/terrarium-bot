@@ -7,9 +7,9 @@ import { addData } from "./addData.js";
 import { deleteDocument } from "./deleteData.js";
 import { updateData } from "./updateData.js";
 
-const bot = new Bot(process.env.BOT_KEY);
+// WRITE LOGIC FOR /SAVED ONLY ADMINS OF THIS CHAT
 
-// НАПИСАТЬ ЛОГИКУ ВКЛ/ВЫКЛ НАПОМИНАНИЯ
+const bot = new Bot(process.env.BOT_KEY);
 
 bot.api.setMyCommands([
   {
@@ -29,8 +29,22 @@ bot.api.setMyCommands([
     description: "указать информацию о себе",
   },
 ]);
+
 let chatId = process.env.CHAT_ID;
-// let threadIndex = 47;
+
+bot.on("my_chat_member", (ctx) => {
+  const chat = ctx.chat;
+  const status = ctx.myChatMember.new_chat_member.status;
+  chatId = chat.id;
+
+  if (status === "member") {
+    console.log(`Бот добавлен в чат: ${chat.title} (ID: ${chat.id})`);
+    ctx.reply(`Спасибо, что добавили меня в группу "${chat.title}"!`);
+  } else if (status === "kicked") {
+    console.log(`Бот удалён из чата: ${chat.title} (ID: ${chat.id})`);
+  }
+});
+
 let userState = {};
 
 const usersList = (await fetchData()).map((user) => user.username);
@@ -58,23 +72,6 @@ bot.command("save_me", async (ctx) => {
     : !isExist && (await ctx.reply(`Не вижу твоё имя пользователя, ${name}!`));
 });
 
-// bot.command("remove_me", async (ctx) => {
-//   const user = ctx.from;
-//   const name = user.first_name || "друг";
-//   const username = user.username || null;
-//   const isExist = await checkUser(username);
-
-//   if (isExist) {
-//     const docId = (await fetchData()).find(
-//       (doc) => doc.username === user.username
-//     ).id;
-//     docId && (await deleteDocument("users", docId));
-//     await ctx.reply(`${name} был успешно удалён!`);
-//   } else {
-//     await ctx.reply(`А тебя и не было, ${name}!`);
-//   }
-// });
-
 bot.command("add_info", async (ctx) => {
   userState[ctx.from.id] = "add_info";
   const user = ctx.from;
@@ -94,9 +91,15 @@ bot.command("add_info", async (ctx) => {
     keyboard.text(option, `answer:${option}`).row();
   });
 
-  if (isExist) {
+  if (!isExist) {
+    await ctx.reply(`Тебя еще нет в базе! Жми /save_me`);
+    delete userState[user.id];
+    return;
+  }
+
+  if (ctx.chat.type === "private") {
     try {
-      const pollMessage = await bot.api.sendMessage(user.id, question, {
+      await bot.api.sendMessage(user.id, question, {
         reply_markup: keyboard,
       });
       console.log("Вопрос отправлен пользователю!");
@@ -104,13 +107,45 @@ bot.command("add_info", async (ctx) => {
       console.error("Ошибка при отправке вопроса:", error);
     }
   } else {
-    await ctx.reply(`Тебя еще нет в базе! Жми /save_me`);
-    delete userState[user.id];
+    await ctx.reply(`Мы можем сделать это в личном диалоге!`);
+  }
+});
+
+bot.hears(/^#\w+$/, async (ctx) => {
+  if (ctx.from.is_bot) {
+    return;
+  }
+  const username = ctx.message.text.slice(1);
+  const userData = (await fetchData()).find(
+    (user) => user.username === username
+  );
+
+  userData &&
+    ctx.reply(
+      Object.keys(userData)
+        .filter((key) => !["docId", "username", "remind"].includes(key))
+        .map((key) => `${key}: ${userData[key]}`)
+        .join("\n")
+    );
+
+  const originalChatId = chatId;
+  const messageId = userData.messageId;
+
+  console.log(originalChatId);
+
+  if (messageId) {
+    try {
+      await ctx.api.copyMessage(ctx.chat.id, originalChatId, messageId, {
+        reply_to_message_id: ctx.message.message_id,
+      });
+    } catch (error) {
+      console.error("Ошибка при копировании сообщения:", error);
+    }
   }
 });
 
 bot.callbackQuery(/answer:(.+)/, async (ctx) => {
-  const answer = ctx.match[1]; // Извлекаем выбранный вариант
+  const answer = ctx.match[1];
   userState[ctx.from.id] = answer;
   console.log(userState);
 
@@ -152,6 +187,19 @@ bot.command("remind", async (ctx) => {
     await ctx.reply(
       `${ctx.from.first_name}, теперь ты будешь получать напоминания!`
     );
+  }
+});
+
+bot.on("message", async (ctx) => {
+  const reply = ctx.message.reply_to_message;
+  if (reply && ctx.message.text === "/saved") {
+    const docId = (await fetchData()).find(
+      (doc) => doc.username === reply.from.username
+    )?.docId;
+    if (docId) {
+      await updateData(docId, { messageId: reply.message_id });
+      await ctx.reply("Успешно сохранено!");
+    }
   }
 });
 
