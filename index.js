@@ -1,13 +1,24 @@
 import dotenv from "dotenv";
 dotenv.config();
-import schedule from "node-schedule";
-import { Bot, InlineKeyboard } from "grammy";
-import { fetchData } from "./fetchData.js";
-import { addData } from "./addData.js";
-import { deleteDocument } from "./deleteData.js";
-import { updateData } from "./updateData.js";
-
-// WRITE LOGIC FOR /SAVED ONLY ADMINS OF THIS CHAT
+import { Bot } from "grammy";
+import { scheduleDailyMessages } from "./utilits.js";
+import {
+  addInfoValue,
+  savePhoto,
+  deleteDoc,
+  newMembers,
+  newChatForBot,
+  showUserInfo,
+  showUserPhoto,
+} from "./handlers/listenerHandlers.js";
+import {
+  remind,
+  getChatId,
+  saveToDb,
+  addInfo,
+  start,
+} from "./handlers/commandHandlers.js";
+import { answer } from "./handlers/otherHandlers.js";
 
 const bot = new Bot(process.env.BOT_KEY);
 
@@ -30,286 +41,32 @@ bot.api.setMyCommands([
   },
 ]);
 
-let chatId = process.env.CHAT_ID;
-
-bot.on("my_chat_member", (ctx) => {
-  const chat = ctx.chat;
-  const status = ctx.myChatMember.new_chat_member.status;
-  chatId = chat.id;
-
-  if (status === "member") {
-    console.log(`Бот добавлен в чат: ${chat.title} (ID: ${chat.id})`);
-    ctx.reply(`Спасибо, что добавили меня в группу "${chat.title}"!`);
-  } else if (status === "kicked") {
-    console.log(`Бот удалён из чата: ${chat.title} (ID: ${chat.id})`);
-  }
-});
-
 let userState = {};
 
-const usersList = (await fetchData()).map((user) => user.username);
-
-const checkUser = async (username) => {
-  const usersData = await fetchData();
-
-  return usersData.find((user) => user.username === username) ? true : false;
-};
-
-bot.command("getid", async (ctx) => {
-  await ctx.reply(`Chat ID: ${ctx.chat.id}`);
+bot.use((ctx, next) => {
+  ctx.userState = userState;
+  ctx.chatIndex = process.env.CHAT_ID;
+  ctx.bot = bot;
+  return next();
 });
 
-bot.command("save_me", async (ctx) => {
-  const user = ctx.from;
-  const name = user.first_name || "друг";
-  const username = user.username || null;
-  const isExist = await checkUser(username);
-
-  isExist && (await ctx.reply(`Ты уже добавлен, ${name}!`));
-  !isExist && username
-    ? (await ctx.reply(`Принято, ${name}! Теперь ты один из нас!`)) &&
-      (await addData(username))
-    : !isExist && (await ctx.reply(`Не вижу твоё имя пользователя, ${name}!`));
+bot.on("my_chat_member", newChatForBot);
+bot.command("getid", getChatId);
+bot.command("save_me", saveToDb);
+bot.command("add_info", addInfo);
+bot.hears(/^##\w+$/, showUserInfo);
+bot.hears(/^#\w+$/, showUserPhoto);
+bot.callbackQuery(/answer:(.+)/, answer);
+bot.on("message:new_chat_members", newMembers);
+bot.command("remind", remind);
+bot.on("message", (ctx) => {
+  userState[ctx.from.id] ? addInfoValue(ctx) : savePhoto(ctx);
 });
-
-bot.command("add_info", async (ctx) => {
-  userState[ctx.from.id] = "add_info";
-  const user = ctx.from;
-  const username = user.username || null;
-  const isExist = await checkUser(username);
-  const question = "Выбери что нужно добавить";
-  const options = [
-    "Игровой id",
-    "Игровой ник",
-    "Реальное имя",
-    "Возраст",
-    "Откуда ты",
-  ];
-
-  const keyboard = new InlineKeyboard();
-  options.forEach((option) => {
-    keyboard.text(option, `answer:${option}`).row();
-  });
-
-  if (!isExist) {
-    await ctx.reply(`Тебя еще нет в базе! Жми /save_me`);
-    delete userState[user.id];
-    return;
-  }
-
-  if (ctx.chat.type === "private") {
-    try {
-      await bot.api.sendMessage(user.id, question, {
-        reply_markup: keyboard,
-      });
-      console.log("Вопрос отправлен пользователю!");
-    } catch (error) {
-      console.error("Ошибка при отправке вопроса:", error);
-    }
-  } else {
-    await ctx.reply(`Мы можем сделать это в личном диалоге!`);
-  }
+bot.on("chat_member", deleteDoc);
+bot.command("start", start);
+bot.catch((err) => {
+  console.error("Произошла ошибка:", err.message);
 });
-
-bot.hears(/^#\w+$/, async (ctx) => {
-  if (ctx.from.is_bot) {
-    return;
-  }
-  const username = ctx.message.text.slice(1);
-  const userData = (await fetchData()).find(
-    (user) => user.username === username
-  );
-
-  userData &&
-    ctx.reply(
-      Object.keys(userData)
-        .filter((key) => !["docId", "username", "remind"].includes(key))
-        .map((key) => `${key}: ${userData[key]}`)
-        .join("\n")
-    );
-
-  const originalChatId = chatId;
-  const messageId = userData.messageId;
-
-  console.log(originalChatId);
-
-  if (messageId) {
-    try {
-      await ctx.api.copyMessage(ctx.chat.id, originalChatId, messageId, {
-        reply_to_message_id: ctx.message.message_id,
-      });
-    } catch (error) {
-      console.error("Ошибка при копировании сообщения:", error);
-    }
-  }
-});
-
-bot.callbackQuery(/answer:(.+)/, async (ctx) => {
-  const answer = ctx.match[1];
-  userState[ctx.from.id] = answer;
-  console.log(userState);
-
-  await ctx.answerCallbackQuery(`Вы выбрали: ${answer}`);
-  await ctx.reply(`Отправь в сообщении "${answer}"`);
-});
-
-bot.on("message:new_chat_members", async (ctx) => {
-  const newMembers = ctx.message.new_chat_members;
-  for (const member of newMembers) {
-    if (member.is_bot) {
-      continue;
-    }
-    const name = member.first_name || "друг";
-
-    await ctx.reply(
-      `Приветствую, ${name}! Если хочешь получать напоминания - сохрани себя в базу /save_me и включи напоминание /remind`
-    );
-  }
-});
-
-bot.command("remind", async (ctx) => {
-  const userData = (await fetchData()).find(
-    (doc) => doc.username === ctx.from.username
-  );
-
-  if (!userData) {
-    await ctx.reply("Тебя нет в базе!");
-    return;
-  }
-
-  if (userData?.remind) {
-    await updateData(userData.docId, { remind: false });
-    await ctx.reply(
-      `${ctx.from.first_name}, ты больше не будешь получать напоминания!`
-    );
-  } else if (!userData.remind) {
-    await updateData(userData.docId, { remind: true });
-    await ctx.reply(
-      `${ctx.from.first_name}, теперь ты будешь получать напоминания!`
-    );
-  }
-});
-
-bot.on("message", async (ctx) => {
-  const reply = ctx.message.reply_to_message;
-  if (reply && ctx.message.text === "/saved") {
-    const docId = (await fetchData()).find(
-      (doc) => doc.username === reply.from.username
-    )?.docId;
-    if (docId) {
-      await updateData(docId, { messageId: reply.message_id });
-      await ctx.reply("Успешно сохранено!");
-    }
-  }
-});
-
-bot.on("message", async (ctx) => {
-  const userId = ctx.from.id;
-  const text = ctx.message.text;
-  const docId = (await fetchData()).find(
-    (doc) => doc.username === ctx.from.username
-  )?.docId;
-  if (!userState || !docId) return;
-  if (!userState[userId]) return;
-
-  switch (userState[userId]) {
-    case "Игровой id":
-      await updateData(docId, { id: `${text}` });
-      ctx.reply(`id успешно добавлен!`);
-      console.log(`id: ${text} успешно добавлен!`);
-      delete userState[userId];
-      break;
-
-    case "Игровой ник":
-      await updateData(docId, { nickName: `${text}` });
-      ctx.reply(`ник успешно добавлен!`);
-      console.log(`ник: ${text} успешно добавлен!`);
-      delete userState[userId];
-      break;
-
-    case "Реальное имя":
-      await updateData(docId, { realName: `${text}` });
-      ctx.reply(`имя успешно добавлено!`);
-      console.log(`имя: ${text} успешно добавлено!`);
-      delete userState[userId];
-      break;
-
-    case "Возраст":
-      await updateData(docId, { age: `${text}` });
-      ctx.reply(`Возраст успешно добавлен!`);
-      console.log(`возраст: ${text} успешно добавлен!`);
-      delete userState[userId];
-      break;
-    case "Откуда ты":
-      await updateData(docId, { areFrom: `${text}` });
-      ctx.reply(`местоположение успешно добавлено!`);
-      console.log(`местоположение: ${text} успешно добавлено!`);
-      delete userState[userId];
-      break;
-
-    default:
-      break;
-  }
-});
-
-// bot.command("getthreadid", async (ctx) => {
-//   const threadId = ctx.message.message_thread_id;
-//   if (threadId) {
-//     threadIndex = threadId;
-//     await ctx.reply(`ID темы: ${threadId}`);
-//   } else {
-//     await ctx.reply("Команда не запущена в теме.");
-//   }
-// });
-
-// LEFT USER
-bot.on("chat_member", async (ctx) => {
-  const status = ctx.chatMember.new_chat_member.status;
-  if (status === "left") {
-    const user = ctx.chatMember.from;
-    const userData = (await fetchData()).find(
-      (doc) => doc.username === user.username
-    );
-    userData && (await deleteDocument("users", userData.docId));
-    console.log(`Пользователь ${user.first_name} (${user.id}) покинул чат.`);
-  }
-});
-
-bot.command("test", async (ctx) => {
-  await ctx.reply("Бот работает!");
-});
-
-bot.command("start", async (ctx) => {
-  await ctx.reply(
-    `Привет. Я - бот. Меня зовут Анна Сергеевна. Я буду напоминать об АВ всяким зайкам, которые потерялись во времени. Проверь, находишься ли ты в моей базе данных /save_me`
-  );
-});
-
-// SEND MESSAGE
-const sendMessage = async (chatId, text) => {
-  try {
-    const sentMessage = await bot.api.sendMessage(chatId, text);
-    console.log(`Сообщение "${text}" отправлено.`);
-  } catch (error) {
-    console.error("Ошибка при отправке", error);
-  }
-};
-
-const scheduleDailyMessages = () => {
-  const times = ["4:45", "10:45", "16:45", "22:45"];
-  const messageText = `${usersList.map((user) =>
-    user[0] !== user ? " " + "@" + user : "@" + user
-  )} АВ начнется через 15 минут! Выставь отряд!`;
-
-  times.forEach((time) => {
-    const [hour, minute] = time.split(":").map(Number);
-
-    schedule.scheduleJob({ hour, minute }, () => {
-      console.log(`Отправка сообщения в ${time}`);
-      sendMessage(chatId, messageText);
-    });
-  });
-};
 
 scheduleDailyMessages();
 
@@ -319,5 +76,6 @@ bot.start({
     "message",
     "edited_message",
     "callback_query",
+    "my_chat_member",
   ],
 });
