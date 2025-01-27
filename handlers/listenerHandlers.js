@@ -10,6 +10,7 @@ export const addInfoValue = async (ctx) => {
   )?.docId;
   if (!ctx.userState || !docId) return;
   if (!ctx.userState[userId]) return;
+  if (ctx.chat.type !== "private") return;
 
   switch (ctx.userState[userId]) {
     case "Игровой id":

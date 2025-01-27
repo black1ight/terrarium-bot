@@ -1,6 +1,7 @@
 import { updateData } from "../updateData.js";
 import { addData } from "../addData.js";
 import { checkUser } from "../utilits.js";
+import { fetchData } from "../fetchData.js";
 import { InlineKeyboard } from "grammy";
 
 export const remind = async (ctx) => {

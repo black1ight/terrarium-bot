@@ -7,7 +7,7 @@ export const checkUser = async (username) => {
   return usersData.find((user) => user.username === username) ? true : false;
 };
 
-export const sendMessage = async (chatId, text) => {
+export const sendMessage = async (bot, chatId, text) => {
   try {
     const sentMessage = await bot.api.sendMessage(chatId, text);
     console.log(`Сообщение "${text}" отправлено.`);
@@ -16,9 +16,9 @@ export const sendMessage = async (chatId, text) => {
   }
 };
 
-export const scheduleDailyMessages = async () => {
+export const scheduleDailyMessages = async (bot) => {
   const usersList = (await fetchData()).map((user) => user.username);
-
+  const chatId = process.env.CHAT_ID;
   const times = ["4:45", "10:45", "16:45", "22:45"];
   const messageText = `${usersList.map((user) =>
     user[0] !== user ? " " + "@" + user : "@" + user
@@ -29,7 +29,7 @@ export const scheduleDailyMessages = async () => {
 
     schedule.scheduleJob({ hour, minute }, () => {
       console.log(`Отправка сообщения в ${time}`);
-      sendMessage(chatId, messageText);
+      sendMessage(bot, chatId, messageText);
     });
   });
 };

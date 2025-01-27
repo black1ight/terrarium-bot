@@ -2,23 +2,8 @@ import dotenv from "dotenv";
 dotenv.config();
 import { Bot } from "grammy";
 import { scheduleDailyMessages } from "./utilits.js";
-import {
-  addInfoValue,
-  savePhoto,
-  deleteDoc,
-  newMembers,
-  newChatForBot,
-  showUserInfo,
-  showUserPhoto,
-} from "./handlers/listenerHandlers.js";
-import {
-  remind,
-  getChatId,
-  saveToDb,
-  addInfo,
-  start,
-} from "./handlers/commandHandlers.js";
-import { answer } from "./handlers/otherHandlers.js";
+import { setupCommands } from "./commands.js";
+import { setupListeners } from "./listeners.js";
 
 const bot = new Bot(process.env.BOT_KEY);
 
@@ -40,36 +25,19 @@ bot.api.setMyCommands([
     description: "указать информацию о себе",
   },
 ]);
-
 let userState = {};
-
 bot.use((ctx, next) => {
   ctx.userState = userState;
   ctx.chatIndex = process.env.CHAT_ID;
   ctx.bot = bot;
   return next();
 });
-
-bot.on("my_chat_member", newChatForBot);
-bot.command("getid", getChatId);
-bot.command("save_me", saveToDb);
-bot.command("add_info", addInfo);
-bot.hears(/^##\w+$/, showUserInfo);
-bot.hears(/^#\w+$/, showUserPhoto);
-bot.callbackQuery(/answer:(.+)/, answer);
-bot.on("message:new_chat_members", newMembers);
-bot.command("remind", remind);
-bot.on("message", (ctx) => {
-  userState[ctx.from.id] ? addInfoValue(ctx) : savePhoto(ctx);
-});
-bot.on("chat_member", deleteDoc);
-bot.command("start", start);
-bot.catch((err) => {
-  console.error("Произошла ошибка:", err.message);
-});
-
-scheduleDailyMessages();
-
+setupCommands(bot);
+setupListeners(bot);
+scheduleDailyMessages(bot);
+// bot.catch((err) => {
+//   console.error("Произошла ошибка:", err.message);
+// });
 bot.start({
   allowed_updates: [
     "chat_member",
