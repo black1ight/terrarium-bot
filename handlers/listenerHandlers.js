@@ -5,9 +5,7 @@ import { updateData } from "../updateData.js";
 export const addInfoValue = async (ctx) => {
   const userId = ctx.from.id;
   const text = ctx.message.text;
-  const docId = (await fetchData()).find(
-    (doc) => doc.username === ctx.from.username
-  )?.docId;
+  const docId = (await fetchData(ctx.from.username))?.docId;
   if (!ctx.userState || !docId) return;
   if (!ctx.userState[userId]) return;
   if (ctx.chat.type !== "private") return;
@@ -40,28 +38,24 @@ export const addInfoValue = async (ctx) => {
       console.log(`возраст: ${text} успешно добавлен!`);
       delete ctx.userState[userId];
       break;
+
     case "Откуда ты":
       await updateData(docId, { areFrom: `${text}` });
       ctx.reply(`местоположение успешно добавлено!`);
       console.log(`местоположение: ${text} успешно добавлено!`);
       delete ctx.userState[userId];
       break;
-
-    default:
-      break;
   }
 };
 
 export const savePhoto = async (ctx) => {
   const reply = ctx.message.reply_to_message;
-  const userId = ctx.from.id; // ID отправителя
-  const chatId = ctx.chat.id; // ID чата
+  const userId = ctx.from.id;
+  const chatId = ctx.chat.id;
   const chatMember = await ctx.api.getChatMember(chatId, userId);
   const isAdmin = ["administrator", "creator"].includes(chatMember.status);
   if (reply && ctx.message.text === "/saved" && isAdmin) {
-    const docId = (await fetchData()).find(
-      (doc) => doc.username === reply.from.username
-    )?.docId;
+    const docId = (await fetchData(reply.from.username))?.docId;
     if (docId) {
       await updateData(docId, { messageId: reply.message_id });
       await ctx.reply("Успешно сохранено!");
@@ -75,9 +69,7 @@ export const deleteDoc = async (ctx) => {
   const status = ctx.chatMember.new_chat_member.status;
   if (status === "left") {
     const user = ctx.chatMember.from;
-    const userData = (await fetchData()).find(
-      (doc) => doc.username === user.username
-    );
+    const userData = await fetchData(user.username);
     userData && (await deleteDocument("users", userData.docId));
     console.log(`Пользователь ${user.first_name} (${user.id}) покинул чат.`);
   }
@@ -90,7 +82,6 @@ export const newMembers = async (ctx) => {
       continue;
     }
     const name = member.first_name || "друг";
-
     await ctx.reply(
       `Приветствую, ${name}! Если хочешь получать напоминания - сохрани себя в базу /save_me и включи напоминание /remind`
     );
@@ -100,7 +91,6 @@ export const newMembers = async (ctx) => {
 export const newChatForBot = async (ctx) => {
   const chat = ctx.chat;
   const status = ctx.myChatMember.new_chat_member.status;
-
   if (status === "member") {
     console.log(`Бот добавлен в чат: ${chat.title} (ID: ${chat.id})`);
     await ctx.reply(`Спасибо, что добавили меня в группу "${chat.title}"!`);
@@ -112,15 +102,19 @@ export const showUserInfo = async (ctx) => {
     return;
   }
   const username = ctx.message.text.slice(2);
-  const userData = (await fetchData()).find(
-    (user) => user.username === username
-  );
-
+  const userData = await fetchData(username);
   userData &&
     ctx.reply(
       Object.keys(userData)
         .filter(
-          (key) => !["docId", "username", "remind", "messageId"].includes(key)
+          (key) =>
+            ![
+              "docId",
+              "username",
+              "remind",
+              "messageId",
+              "reminderTimes",
+            ].includes(key)
         )
         .map((key) => `${key}: ${userData[key]}`)
         .join("\n")
@@ -132,13 +126,9 @@ export const showUserPhoto = async (ctx) => {
     return;
   }
   const username = ctx.message.text.slice(1);
-  const userData = (await fetchData()).find(
-    (user) => user.username === username
-  );
-
+  const userData = await fetchData(username);
   const originalChatId = ctx.chatIndex;
   const messageId = userData.messageId;
-
   if (messageId) {
     try {
       await ctx.api.copyMessage(ctx.chat.id, originalChatId, messageId, {

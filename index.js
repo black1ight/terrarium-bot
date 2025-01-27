@@ -21,11 +21,16 @@ bot.api.setMyCommands([
     description: "вкл/выкл напоминания",
   },
   {
+    command: "reminder_times",
+    description: "выбрать время",
+  },
+  {
     command: "add_info",
     description: "указать информацию о себе",
   },
 ]);
 let userState = {};
+
 bot.use((ctx, next) => {
   ctx.userState = userState;
   ctx.chatIndex = process.env.CHAT_ID;
@@ -35,9 +40,9 @@ bot.use((ctx, next) => {
 setupCommands(bot);
 setupListeners(bot);
 scheduleDailyMessages(bot);
-// bot.catch((err) => {
-//   console.error("Произошла ошибка:", err.message);
-// });
+bot.catch((err) => {
+  console.error("Произошла ошибка:", err.message);
+});
 bot.start({
   allowed_updates: [
     "chat_member",

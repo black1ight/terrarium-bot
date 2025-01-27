@@ -4,7 +4,7 @@ import { firebaseConfig } from "./firebaseConfig.js";
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export const fetchData = async () => {
+export const fetchData = async (username = null) => {
   const querySnapshot = await getDocs(collection(db, "users"));
   const data = [];
   querySnapshot.forEach((doc) => {
@@ -13,5 +13,9 @@ export const fetchData = async () => {
       ...doc.data(),
     });
   });
-  return data;
+  if (username) {
+    return data.find((doc) => doc.username === username);
+  } else {
+    return data;
+  }
 };

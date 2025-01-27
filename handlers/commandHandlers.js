@@ -5,15 +5,11 @@ import { fetchData } from "../fetchData.js";
 import { InlineKeyboard } from "grammy";
 
 export const remind = async (ctx) => {
-  const userData = (await fetchData()).find(
-    (doc) => doc.username === ctx.from.username
-  );
-
+  const userData = await fetchData(ctx.from.username);
   if (!userData) {
     await ctx.reply("Тебя нет в базе!");
     return;
   }
-
   if (userData?.remind) {
     await updateData(userData.docId, { remind: false });
     await ctx.reply(
@@ -24,6 +20,37 @@ export const remind = async (ctx) => {
     await ctx.reply(
       `${ctx.from.first_name}, теперь ты будешь получать напоминания!`
     );
+  }
+};
+
+export const reminderTimes = async (ctx) => {
+  const user = ctx.from;
+  ctx.userState[user.id] = "reminderTimes";
+  const username = user.username || null;
+  const isExist = await checkUser(username);
+  const question = "Выбери нужное время";
+  const options = ["4:45", "10:45", "16:45", "22:45"];
+
+  const keyboard = new InlineKeyboard();
+  options.forEach((option) => {
+    keyboard.text(option, `answer:${option}`).row();
+  });
+  if (!isExist) {
+    await ctx.reply(`Тебя еще нет в базе! Жми /save_me`);
+    delete ctx.userState[user.id];
+    return;
+  }
+  if (ctx.chat.type === "private") {
+    try {
+      await ctx.bot.api.sendMessage(user.id, question, {
+        reply_markup: keyboard,
+      });
+      console.log("Вопрос отправлен пользователю!");
+    } catch (error) {
+      console.error("Ошибка при отправке вопроса:", error);
+    }
+  } else {
+    await ctx.reply(`Мы можем сделать это в личном диалоге!`);
   }
 };
 
@@ -62,13 +89,11 @@ export const addInfo = async (ctx) => {
   options.forEach((option) => {
     keyboard.text(option, `answer:${option}`).row();
   });
-
   if (!isExist) {
     await ctx.reply(`Тебя еще нет в базе! Жми /save_me`);
     delete ctx.userState[user.id];
     return;
   }
-
   if (ctx.chat.type === "private") {
     try {
       await ctx.bot.api.sendMessage(user.id, question, {
