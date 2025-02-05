@@ -27,7 +27,7 @@ export const autoDeleteMessage = async (bot, chatId, messageId) => {
 
 export const scheduleDailyMessages = async (bot) => {
   const chatId = process.env.CHAT_ID;
-  const times = ["4:45", "10:45", "16:45", "22:45", "23:08"];
+  const times = ["4:45", "10:45", "16:45", "22:45"];
   times.forEach(async (time) => {
     const [hour, minute] = time.split(":").map(Number);
 

@@ -8,6 +8,14 @@ export const addData = async (username) => {
   try {
     const docRef = await addDoc(collection(db, "users"), {
       username,
+      remind: false,
+      messageId: null,
+      reminderTimes: null,
+      id: null,
+      nickName: null,
+      realName: null,
+      areFrom: null,
+      age: null,
     });
     console.log("Документ добавлен с ID:", docRef.id);
   } catch (e) {

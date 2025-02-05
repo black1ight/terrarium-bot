@@ -127,22 +127,16 @@ export const showUserInfo = async (ctx) => {
   }
   const username = ctx.message.text.slice(2);
   const userData = await fetchData(username);
-  userData &&
-    ctx.reply(
-      Object.keys(userData)
-        .filter(
-          (key) =>
-            ![
-              "docId",
-              "username",
-              "remind",
-              "messageId",
-              "reminderTimes",
-            ].includes(key)
+  const textMessage = Object.keys(userData)
+    .filter(
+      (key) =>
+        !["docId", "username", "remind", "messageId", "reminderTimes"].includes(
+          key
         )
-        .map((key) => `${key}: ${userData[key]}`)
-        .join("\n")
-    );
+    )
+    .map((key) => `${key}: ${userData[key]}`)
+    .join("\n");
+  userData && textMessage && (await ctx.reply(textMessage));
 };
 
 export const showUserPhoto = async (ctx) => {
