@@ -1,26 +1,34 @@
 import { updateData } from "../updateData.js";
 import { addData } from "../addData.js";
-import { checkUser } from "../utilits.js";
+import { checkUser, autoDeleteMessage } from "../utilits.js";
 import { fetchData } from "../fetchData.js";
 import { InlineKeyboard } from "grammy";
 
 export const remind = async (ctx) => {
+  const chatId = ctx.chat.id;
+  let messageId = null;
   const userData = await fetchData(ctx.from.username);
   if (!userData) {
-    await ctx.reply("Тебя нет в базе!");
+    const { message_id } = await ctx.reply("Тебя нет в базе!");
+    messageId = message_id;
     return;
   }
   if (userData?.remind) {
     await updateData(userData.docId, { remind: false });
-    await ctx.reply(
+    const { message_id } = await ctx.reply(
       `${ctx.from.first_name}, ты больше не будешь получать напоминания!`
     );
+    messageId = message_id;
   } else if (!userData.remind) {
     await updateData(userData.docId, { remind: true });
-    await ctx.reply(
+    const { message_id } = await ctx.reply(
       `${ctx.from.first_name}, теперь ты будешь получать напоминания!`
     );
+    messageId = message_id;
   }
+  setTimeout(() => {
+    autoDeleteMessage(ctx.bot, chatId, messageId);
+  }, 10000);
 };
 
 export const reminderTimes = async (ctx) => {
@@ -36,7 +44,12 @@ export const reminderTimes = async (ctx) => {
     keyboard.text(option, `answer:${option}`).row();
   });
   if (!isExist) {
-    await ctx.reply(`Тебя еще нет в базе! Жми /save_me`);
+    const { message_id, chat } = await ctx.reply(
+      `Тебя еще нет в базе! Жми /save_me`
+    );
+    setTimeout(() => {
+      autoDeleteMessage(ctx.bot, chat.id, message_id);
+    }, 10000);
     delete ctx.userState[user.id];
     return;
   }
@@ -50,7 +63,13 @@ export const reminderTimes = async (ctx) => {
       console.error("Ошибка при отправке вопроса:", error);
     }
   } else {
-    await ctx.reply(`Мы можем сделать это в личном диалоге!`);
+    const { message_id, chat } = await ctx.reply(
+      `Мы можем сделать это в личном диалоге!`
+    );
+
+    setTimeout(() => {
+      autoDeleteMessage(ctx.bot, chat.id, message_id);
+    }, 10000);
   }
 };
 
@@ -63,12 +82,31 @@ export const saveToDb = async (ctx) => {
   const name = user.first_name || "друг";
   const username = user.username || null;
   const isExist = await checkUser(username);
+  let messageId = null;
+  let chatId = null;
 
-  isExist && (await ctx.reply(`Ты уже добавлен, ${name}!`));
-  !isExist && username
-    ? (await ctx.reply(`Принято, ${name}! Теперь ты один из нас!`)) &&
-      (await addData(username))
-    : !isExist && (await ctx.reply(`Не вижу твоё имя пользователя, ${name}!`));
+  if (isExist) {
+    const { message_id, chat } = await ctx.reply(`Ты уже добавлен, ${name}!`);
+    messageId = message_id;
+    chatId = chat.id;
+  } else if (!isExist && username) {
+    const { message_id, chat } = await ctx.reply(
+      `Принято, ${name}! Теперь ты один из нас!`
+    );
+    messageId = message_id;
+    chatId = chat.id;
+    await addData(username);
+  } else if (!isExist) {
+    const { message_id, chat } = await ctx.reply(
+      `Не вижу твоё имя пользователя, ${name}!`
+    );
+    messageId = message_id;
+    chatId = chat.id;
+  }
+
+  setTimeout(() => {
+    autoDeleteMessage(ctx.bot, chatId, messageId);
+  }, 10000);
 };
 
 export const addInfo = async (ctx) => {
@@ -90,8 +128,13 @@ export const addInfo = async (ctx) => {
     keyboard.text(option, `answer:${option}`).row();
   });
   if (!isExist) {
-    await ctx.reply(`Тебя еще нет в базе! Жми /save_me`);
+    const { message_id, chat } = await ctx.reply(
+      `Тебя еще нет в базе! Жми /save_me`
+    );
     delete ctx.userState[user.id];
+    setTimeout(() => {
+      autoDeleteMessage(ctx.bot, chat.id, message_id);
+    }, 10000);
     return;
   }
   if (ctx.chat.type === "private") {
@@ -104,12 +147,24 @@ export const addInfo = async (ctx) => {
       console.error("Ошибка при отправке вопроса:", error);
     }
   } else {
-    await ctx.reply(`Мы можем сделать это в личном диалоге!`);
+    const { message_id, chat } = await ctx.reply(
+      `Мы можем сделать это в личном диалоге!`
+    );
+    setTimeout(() => {
+      autoDeleteMessage(ctx.bot, chat.id, message_id);
+    }, 10000);
   }
 };
 
 export const start = async (ctx) => {
-  await ctx.reply(
+  let messageId = null;
+  let chatId = null;
+  const { message_id, chat } = await ctx.reply(
     `Привет. Я - бот. Меня зовут Анна Сергеевна. Я буду напоминать об АВ всяким зайкам, которые потерялись во времени. Проверь, находишься ли ты в моей базе данных /save_me`
   );
+  messageId = message_id;
+  chatId = chat.id;
+  setTimeout(() => {
+    autoDeleteMessage(ctx.bot, chatId, messageId);
+  }, 10000);
 };

@@ -14,21 +14,30 @@ export const sendMessage = async (bot, chatId, text) => {
   }
 };
 
+export const autoDeleteMessage = async (bot, chatId, messageId) => {
+  bot.api
+    .deleteMessage(chatId, messageId)
+    .then(() => {
+      console.log("Сообщение удалено.");
+    })
+    .catch((err) => {
+      console.error("Ошибка удаления сообщения:", err);
+    });
+};
+
 export const scheduleDailyMessages = async (bot) => {
   const chatId = process.env.CHAT_ID;
-  const times = ["4:45", "10:45", "16:45", "22:45"];
-  const usersData = await fetchData();
+  const times = ["4:45", "10:45", "16:45", "22:45", "23:08"];
   times.forEach(async (time) => {
-    const usersList = usersData
-      .filter((user) => user.reminderTimes?.includes(time))
-      .map((el) => el.username);
-    const messageText = `${usersList.map((user) =>
-      usersList[0] !== user ? " " + "@" + user : "@" + user
-    )} АВ начнется через 15 минут! Выставь отряд!`;
-
     const [hour, minute] = time.split(":").map(Number);
 
-    schedule.scheduleJob({ hour, minute }, () => {
+    schedule.scheduleJob({ hour, minute }, async () => {
+      const usersList = (await fetchData())
+        .filter((user) => user.reminderTimes?.includes(time))
+        .map((el) => el.username);
+      const messageText = `${usersList.map((user) =>
+        usersList[0] !== user ? " " + "@" + user : "@" + user
+      )} АВ начнется через 15 минут! Выставь отряд!`;
       console.log(`Отправка сообщения в ${time}`);
       sendMessage(bot, chatId, messageText);
     });
