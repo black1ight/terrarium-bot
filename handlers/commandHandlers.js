@@ -83,7 +83,7 @@ export const saveToDb = async (ctx) => {
   const username = user.username || null;
   const isExist = await checkUser(username);
   let messageId = null;
-  let chatId = null;
+  let chatId = ctx.chat.id;
 
   if (isExist) {
     const { message_id, chat } = await ctx.reply(`Ты уже добавлен, ${name}!`);
