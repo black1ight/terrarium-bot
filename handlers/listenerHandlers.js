@@ -13,35 +13,35 @@ export const addInfoValue = async (ctx) => {
 
   switch (ctx.userState[userId]) {
     case "Игровой id":
-      await updateData(docId, { id: `${text}` });
+      await updateData("users", docId, { id: `${text}` });
       ctx.reply(`id успешно добавлен!`);
       console.log(`id: ${text} успешно добавлен!`);
       delete ctx.userState[userId];
       break;
 
     case "Игровой ник":
-      await updateData(docId, { nickName: `${text}` });
+      await updateData("users", docId, { nickName: `${text}` });
       ctx.reply(`ник успешно добавлен!`);
       console.log(`ник: ${text} успешно добавлен!`);
       delete ctx.userState[userId];
       break;
 
     case "Реальное имя":
-      await updateData(docId, { realName: `${text}` });
+      await updateData("users", docId, { realName: `${text}` });
       ctx.reply(`имя успешно добавлено!`);
       console.log(`имя: ${text} успешно добавлено!`);
       delete ctx.userState[userId];
       break;
 
     case "Возраст":
-      await updateData(docId, { age: `${text}` });
+      await updateData("users", docId, { age: `${text}` });
       ctx.reply(`Возраст успешно добавлен!`);
       console.log(`возраст: ${text} успешно добавлен!`);
       delete ctx.userState[userId];
       break;
 
     case "Откуда ты":
-      await updateData(docId, { areFrom: `${text}` });
+      await updateData("users", docId, { areFrom: `${text}` });
       ctx.reply(`местоположение успешно добавлено!`);
       console.log(`местоположение: ${text} успешно добавлено!`);
       delete ctx.userState[userId];
@@ -59,20 +59,28 @@ export const savePhoto = async (ctx) => {
   if (reply && ctx.message.text === "/saved" && isAdmin) {
     const docId = (await fetchData(reply.from.username))?.docId;
     if (docId) {
-      await updateData(docId, { messageId: reply.message_id });
+      await updateData("users", docId, { messageId: reply.message_id });
       const { message_id } = await ctx.reply("Успешно сохранено!");
       messageId = message_id;
       setTimeout(() => {
         autoDeleteMessage(ctx.bot, chatId, messageId);
-      }, 10000);
+      }, 30000);
     }
+  }
+  if (reply && ctx.message.text === "/saved_help-username" && isAdmin) {
+    await updateData("bot", "messages", { messageId: reply.message_id });
+    const { message_id } = await ctx.reply("Успешно сохранено!");
+    messageId = message_id;
+    setTimeout(() => {
+      autoDeleteMessage(ctx.bot, chatId, messageId);
+    }, 30000);
   }
   if (ctx.message.text === "/saved" && !isAdmin) {
     const { message_id } = await ctx.reply("Ты не админ! Прекрати хулиганить!");
     messageId = message_id;
     setTimeout(() => {
       autoDeleteMessage(ctx.bot, chatId, messageId);
-    }, 10000);
+    }, 30000);
   }
 };
 
@@ -103,7 +111,7 @@ export const newMembers = async (ctx) => {
   messagesId.map((index) =>
     setTimeout(async () => {
       await autoDeleteMessage(ctx.bot, chatId, index);
-    }, 10000)
+    }, 30000)
   );
 };
 
@@ -117,7 +125,7 @@ export const newChatForBot = async (ctx) => {
     );
     setTimeout(() => {
       autoDeleteMessage(ctx.bot, chat, message_id);
-    }, 10000);
+    }, 30000);
   }
 };
 

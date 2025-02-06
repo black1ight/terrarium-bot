@@ -13,11 +13,13 @@ export const answer = async (ctx) => {
     case "reminderTimes":
       const { docId, reminderTimes } = await fetchData(ctx.from.username);
       if (reminderTimes?.find((el) => el === answer)) {
-        await updateData(docId, { reminderTimes: arrayRemove(answer) });
+        await updateData("users", docId, {
+          reminderTimes: arrayRemove(answer),
+        });
         await ctx.answerCallbackQuery(`Вы выбрали: ${answer}`);
         await ctx.reply(`Время "${answer}" успешно удалено!`);
       } else {
-        await updateData(docId, { reminderTimes: arrayUnion(answer) });
+        await updateData("users", docId, { reminderTimes: arrayUnion(answer) });
         await ctx.answerCallbackQuery(`Вы выбрали: ${answer}`);
         await ctx.reply(`Время "${answer}" успешно добавлено!`);
       }

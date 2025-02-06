@@ -19,3 +19,15 @@ export const fetchData = async (username = null) => {
     return data;
   }
 };
+
+export const fetchBotMessagesField = async (field = null) => {
+  const querySnapshot = await getDocs(collection(db, "bot"));
+  const data = [];
+  querySnapshot.forEach((doc) => {
+    data.push({
+      docId: doc.id,
+      ...doc.data(),
+    });
+  });
+  return data[0][field];
+};
