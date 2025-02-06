@@ -1,7 +1,7 @@
-import { updateData } from "../updateData.js";
-import { addData } from "../addData.js";
+import { updateData } from "../db-services/updateData.js";
+import { addData } from "../db-services/addData.js";
 import { checkUser, autoDeleteMessage } from "../utilits.js";
-import { fetchData, fetchBotMessagesField } from "../fetchData.js";
+import { fetchData, fetchBotMessagesField } from "../db-services/fetchData.js";
 import { InlineKeyboard } from "grammy";
 
 export const remind = async (ctx) => {
@@ -26,9 +26,7 @@ export const remind = async (ctx) => {
     );
     messageId = message_id;
   }
-  setTimeout(() => {
-    autoDeleteMessage(ctx.bot, chatId, messageId);
-  }, 30000);
+  autoDeleteMessage(ctx.bot, chatId, messageId);
 };
 
 export const reminderTimes = async (ctx) => {
@@ -47,9 +45,8 @@ export const reminderTimes = async (ctx) => {
     const { message_id, chat } = await ctx.reply(
       `Тебя еще нет в базе! Жми /save_me`
     );
-    setTimeout(() => {
-      autoDeleteMessage(ctx.bot, chat.id, message_id);
-    }, 30000);
+
+    autoDeleteMessage(ctx.bot, chat.id, message_id);
     delete ctx.userState[user.id];
     return;
   }
@@ -66,10 +63,7 @@ export const reminderTimes = async (ctx) => {
     const { message_id, chat } = await ctx.reply(
       `Мы можем сделать это в личном диалоге!`
     );
-
-    setTimeout(() => {
-      autoDeleteMessage(ctx.bot, chat.id, message_id);
-    }, 30000);
+    autoDeleteMessage(ctx.bot, chat.id, message_id);
   }
 };
 
@@ -112,18 +106,14 @@ export const saveToDb = async (ctx) => {
           originalChatId,
           helpMessageId
         );
-        setTimeout(() => {
-          autoDeleteMessage(ctx.bot, chat.id, message_id);
-        }, 30000);
+        autoDeleteMessage(ctx.bot, chat.id, message_id);
       } catch (error) {
         console.error("Ошибка при копировании сообщения:", error);
       }
     }
   }
 
-  setTimeout(() => {
-    autoDeleteMessage(ctx.bot, chatId, messageId);
-  }, 30000);
+  autoDeleteMessage(ctx.bot, chatId, messageId);
 };
 
 export const addInfo = async (ctx) => {
@@ -149,9 +139,8 @@ export const addInfo = async (ctx) => {
       `Тебя еще нет в базе! Жми /save_me`
     );
     delete ctx.userState[user.id];
-    setTimeout(() => {
-      autoDeleteMessage(ctx.bot, chat.id, message_id);
-    }, 30000);
+
+    autoDeleteMessage(ctx.bot, chat.id, message_id);
     return;
   }
   if (ctx.chat.type === "private") {
@@ -167,9 +156,8 @@ export const addInfo = async (ctx) => {
     const { message_id, chat } = await ctx.reply(
       `Мы можем сделать это в личном диалоге!`
     );
-    setTimeout(() => {
-      autoDeleteMessage(ctx.bot, chat.id, message_id);
-    }, 30000);
+
+    autoDeleteMessage(ctx.bot, chat.id, message_id);
   }
 };
 
@@ -181,7 +169,5 @@ export const start = async (ctx) => {
   );
   messageId = message_id;
   chatId = chat.id;
-  setTimeout(() => {
-    autoDeleteMessage(ctx.bot, chatId, messageId);
-  }, 30000);
+  autoDeleteMessage(ctx.bot, chatId, messageId);
 };

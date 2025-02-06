@@ -1,6 +1,6 @@
-import { deleteDocument } from "../deleteData.js";
-import { fetchData } from "../fetchData.js";
-import { updateData } from "../updateData.js";
+import { deleteDocument } from "../db-services/deleteData.js";
+import { fetchData } from "../db-services/fetchData.js";
+import { updateData } from "../db-services/updateData.js";
 import { autoDeleteMessage } from "../utilits.js";
 
 export const addInfoValue = async (ctx) => {
@@ -62,25 +62,19 @@ export const savePhoto = async (ctx) => {
       await updateData("users", docId, { messageId: reply.message_id });
       const { message_id } = await ctx.reply("Успешно сохранено!");
       messageId = message_id;
-      setTimeout(() => {
-        autoDeleteMessage(ctx.bot, chatId, messageId);
-      }, 30000);
+      autoDeleteMessage(ctx.bot, chatId, messageId);
     }
   }
   if (reply && ctx.message.text === "/saved_help-username" && isAdmin) {
     await updateData("bot", "messages", { messageId: reply.message_id });
     const { message_id } = await ctx.reply("Успешно сохранено!");
     messageId = message_id;
-    setTimeout(() => {
-      autoDeleteMessage(ctx.bot, chatId, messageId);
-    }, 30000);
+    autoDeleteMessage(ctx.bot, chatId, messageId);
   }
   if (ctx.message.text === "/saved" && !isAdmin) {
     const { message_id } = await ctx.reply("Ты не админ! Прекрати хулиганить!");
     messageId = message_id;
-    setTimeout(() => {
-      autoDeleteMessage(ctx.bot, chatId, messageId);
-    }, 30000);
+    autoDeleteMessage(ctx.bot, chatId, messageId);
   }
 };
 
@@ -108,11 +102,7 @@ export const newMembers = async (ctx) => {
     );
     messagesId.push(message_id);
   }
-  messagesId.map((index) =>
-    setTimeout(async () => {
-      await autoDeleteMessage(ctx.bot, chatId, index);
-    }, 30000)
-  );
+  messagesId.map((index) => autoDeleteMessage(ctx.bot, chatId, index));
 };
 
 export const newChatForBot = async (ctx) => {
@@ -123,9 +113,7 @@ export const newChatForBot = async (ctx) => {
     const { message_id } = await ctx.reply(
       `Спасибо, что добавили меня в группу "${chat.title}"!`
     );
-    setTimeout(() => {
-      autoDeleteMessage(ctx.bot, chat, message_id);
-    }, 30000);
+    autoDeleteMessage(ctx.bot, chat, message_id);
   }
 };
 

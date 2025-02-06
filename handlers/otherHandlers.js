@@ -1,6 +1,6 @@
 import { arrayRemove, arrayUnion } from "firebase/firestore";
-import { fetchData } from "../fetchData.js";
-import { updateData } from "../updateData.js";
+import { fetchData } from "../db-services/fetchData.js";
+import { updateData } from "../db-services/updateData.js";
 
 export const answer = async (ctx) => {
   const answer = ctx.match[1];
