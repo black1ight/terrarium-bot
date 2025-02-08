@@ -9,7 +9,11 @@ export const checkUser = async (username) => {
 export const sendMessage = async (bot, chatId, text) => {
   try {
     const { message_id } = await bot.api.sendMessage(chatId, text);
-    autoDeleteMessage(bot, chatId, message_id, 900000);
+    if (message_id) {
+      autoDeleteMessage(bot, chatId, message_id, 900000);
+    } else {
+      console.log('message_id - is not defined')
+    }
   } catch (error) {
     console.error("Ошибка при отправке", error);
   }
