@@ -38,10 +38,10 @@ export const scheduleDailyMessages = async (bot) => {
   const times = ["4:45", "10:45", "16:45", "22:45"];
   times.forEach(async (time) => {
     const [hour, minute] = time.split(":").map(Number);
-
+    const timeUpd = `${hour + 1}:${minute}`;
     schedule.scheduleJob({ hour, minute }, async () => {
       const usersList = (await fetchData())
-        .filter((user) => user.reminderTimes?.includes(time))
+        .filter((user) => user.reminderTimes?.includes(timeUpd))
         .map((el) => el.username);
       const messageText = `${usersList.map((user) =>
         usersList[0] !== user ? " " + "@" + user : "@" + user

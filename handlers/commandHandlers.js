@@ -35,7 +35,7 @@ export const reminderTimes = async (ctx) => {
   const username = user.username || null;
   const isExist = await checkUser(username);
   const question = "Выбери нужное время";
-  const options = ["4:45", "10:45", "16:45", "22:45"];
+  const options = ["5:45", "11:45", "17:45", "23:45"];
 
   const keyboard = new InlineKeyboard();
   options.forEach((option) => {
